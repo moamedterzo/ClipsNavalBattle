@@ -4,192 +4,91 @@
 (defmodule AGENT (import MAIN ?ALL) (import ENV ?ALL) (export ?ALL))
 
 
+(deftemplate g-cell (slot x) (slot y) (slot probability))
 
 
-(defrule inerzia0 (declare (salience 10))
-	(status (step ?s)(currently running))
-	(moves (fires 0) (guesses ?ng&:(> ?ng 0)))
+(defrule initialize-g-cell (declare (salience 30))
+	not (initialized)
+	;bisogna asserire tanti fatti quante sono le celle
 =>
-	(assert (exec (step ?s) (action guess) (x 0) (y 0)))
-     (pop-focus)
-
+	(assert (initX 0))
+	(assert (initY 0))
 )
 
-(defrule inerzia0-bis (declare (salience 10))
-	(status (step ?s)(currently running))
-	(moves (guesses 0))
+(defrule initialize-g-cell (declare (salience 30))
+	?xFact <- (initX ?x&:(>= ?x 0)&:(<= ?x 9))
+	(initY ?y&:(>= ?y 0)&:(<= ?y 9))
 =>
-	(assert (exec (step ?s) (action unguess) (x 0) (y 0)))
-     (pop-focus)
-
+	(assert (g-cell (x ?x) (y ?y)))
+	(bind ?newX (+ ?x 1))
+	(retract ?xFact)
+	(assert (initX ?newX)
 )
 
-
-
-(defrule inerzia
-	(status (step ?s)(currently running))
-	(not (exec  (action fire) (x 2) (y 4)) )
+(defrule initialize-g-cell (declare (salience 30))
+	?xFact <- (initX 10)
+	?yFact <- (initY ?y&:(>= ?y 0)&:(<= ?y 8))
 =>
-	(assert (exec (step ?s) (action fire) (x 2) (y 4)))
-     (pop-focus)
-
+	(bind ?newY (+ ?y 1))
+	(retract ?xFact)
+	(retract ?yFact)
+	(assert (initX 0)
+	(assert (initY ?newY)
 )
 
-(defrule inerzia1
-	(status (step ?s)(currently running))
-	(not (exec  (action fire) (x 2) (y 5)))
+(defrule initialize-g-cell (declare (salience 30))
+	?xFact <- (initX 10)
+	?yFact <- (initY 9)
 =>
-
-
-	(assert (exec (step ?s) (action fire) (x 2) (y 5)))
-     (pop-focus)
-
+	(retract ?xFact)
+	(retract ?yFact)
+	(assert (initialized))
 )
 
-(defrule inerzia2
-	(status (step ?s)(currently running))
-	(not (exec  (action fire) (x 2) (y 6)))
-
+(defrule remove-know-g-cell (declare (salience 20))
+	?gcell <- (g-cell (x ?x) (y ?y))
+	(k-cell (x ?x) (y ?y))
 =>
-
-	(assert (exec (step ?s) (action fire) (x 2) (y 6)))
-     (pop-focus)
-
+	(retract(?gcell))
 )
 
-(defrule inerzia3
-	(status (step ?s)(currently running))
-	(not (exec  (action fire) (x 1) (y 2)))
+(defrule update-g-cell (declare (salience 20))
+	(not (updated))
+=>;update all g-cell
+;usare tutte le inferenze possibili per calcolare la probabilità
 
-=>
-	(assert (exec (step ?s) (action fire) (x 1) (y 2)))
-     (pop-focus)
+	(assert(updated))
 )
 
 
-(defrule inerzia4
+
+(defrule fire-best-g-cell	
 	(status (step ?s)(currently running))
-	(not (exec (action fire) (x 7) (y 5)))
-=>
-
-	(assert (exec (step ?s) (action fire) (x 7) (y 5)))
-     (pop-focus)
-
-
-
+	(moves (fires ?mov&:(> ?mov 0)))
+	(g-cell (x ?x) (y ?y) (probability ?probability1))
+	(not (g-cell (probability ?probability2&:(> probability2 probability1))))
+	=>		
+	(assert (exec (step ?s) (action fire) (x ?x) (y ?y)))
+	(retract(updated))
+    (pop-focus)
 )
 
-(defrule inerzia5
+(defrule guess-best-g-cell	
 	(status (step ?s)(currently running))
-
-	(not (exec (action fire) (x 8) (y 3)))
-=>
-
-
-
-	(assert (exec (step ?s) (action fire) (x 8) (y 3)))
-     (pop-focus)
-
-
-)
-
-
-(defrule inerzia6
-	(status (step ?s)(currently running))
-		(not (exec  (action fire) (x 8) (y 4)))
-=>
-
-
-	(assert (exec (step ?s) (action fire) (x 8) (y 4)))
-     (pop-focus)
-
-	)
-
-
-
-
-
-(defrule inerzia7
-	(status (step ?s)(currently running))
-		(not (exec  (action fire) (x 8) (y 5)))
-=>
-
-
-	(assert (exec (step ?s) (action fire) (x 8) (y 5)))
-     (pop-focus)
-
-)
-
-
-(defrule inerzia8
-	(status (step ?s)(currently running))
-		(not (exec  (action fire) (x 6) (y 9)))
-=>
-
-
-	(assert (exec (step ?s) (action fire) (x 6) (y 9)))
-     (pop-focus)
-)
-
-
-(defrule inerzia9
-	(status (step ?s)(currently running))
-		(not (exec  (action fire) (x 7) (y 9)))
-=>
-
-
-	(assert (exec (step ?s) (action fire) (x 7) (y 9)))
-     (pop-focus)
-)
-
-(defrule inerzia10 (declare (salience 30))
-	(status (step ?s)(currently running))
-		(not (exec  (action fire) (x 6) (y 4)))
-=>
-
-
-	(assert (exec (step ?s) (action fire) (x 6) (y 4)))
-     (pop-focus)
-)
-
-(defrule inerzia11 (declare (salience 30))
-	(status (step ?s)(currently running))
-		(not (exec  (action guess) (x 7) (y 7)))
-=>
-
-
-	(assert (exec (step ?s) (action guess) (x 7) (y 7)))
-     (pop-focus)
-)
-
-
-(defrule inerzia20 (declare (salience 30))
-	(status (step ?s)(currently running))
-	(not (exec  (action guess) (x 1) (y 3)))
-=>
-
-
-	(assert (exec (step ?s) (action guess) (x 1) (y 3)))
-     (pop-focus)
-
-)
-
-(defrule inerzia21  (declare (salience 30))
-	(status (step ?s)(currently running))
-	(not (exec  (action guess) (x 1) (y 4)))
-=>
-
-
-	(assert (exec (step ?s) (action guess) (x 1) (y 4)))
-     (pop-focus)
-
+	(moves (fire 0) (guesses ?mov&:(> ?mov 0)))
+	(g-cell (x ?x) (y ?y) (probability ?probability1))
+	(not (g-cell (probability ?probability2&:(> probability2 probability1))))
+	=>
+	(assert (exec (step ?s) (action guess) (x ?x) (y ?y)));per la guess andrebbe fatto un calcolo migliore, non va presa la cella piu probabile
+															; ma trovata la disposizione piu probabile di navi e restituita (o altro)
+    (pop-focus)
 )
 
 
 
 
-
-(defrule print-what-i-know-since-the-beginning
+(defrule print-what-i-know-since-the-beginning 
+	(declare (salience 10))
 	(k-cell (x ?x) (y ?y) (content ?t) )
 =>
 	(printout t "I know that cell [" ?x ", " ?y "] contains " ?t "." crlf)
