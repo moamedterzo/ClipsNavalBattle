@@ -1,0 +1,117 @@
+TRUE
+CLIPS> (load 0_Main.clp)
+
+[CSTRCPSR1] WARNING: Redefining defmodule: MAIN
+Defining deftemplate: exec
+Defining deftemplate: status
+Defining deftemplate: moves
+Defining deftemplate: statistics
+Defining defrule: go-on-env-first +j+j
+Defining defrule: go-on-agent +j+j+j
+Defining defrule: go-on-env +j+j+j
+Defining defrule: game-over =j+j+j
+Defining deffacts: initial-facts
+TRUE
+CLIPS> (load 1_Env.clp)
+Defining defmodule: ENV
+Defining deftemplate: cell
+Defining deftemplate: boat-hor
+Defining deftemplate: boat-ver
+Defining deftemplate: k-cell
+Defining deftemplate: k-per-row
+Defining deftemplate: k-per-col
+Defining defrule: action-fire +j+j+j+j
+Defining defrule: action-guess =j+j+j+j
+Defining defrule: action-unguess =j+j+j+j+j
+Defining defrule: action-solve =j+j+j
+Defining defrule: fire-ok +j+j+j+j
+Defining defrule: fire-ko =j+j+j+j
+Defining defrule: hit-boat-hor-trace +j+j+j+j
+Defining defrule: hit-boat-ver-trace =j+j+j+j
+Defining defrule: sink-boat-hor =j+j+j
+=j+j+j
+=j+j+j
+=j+j+j
+Defining defrule: sink-boat-ver =j+j+j
+=j+j+j
+=j+j+j
+=j+j+j
+Defining defrule: solve-count-guessed-ok +j+j+j+j+j
+Defining defrule: solve-count-guessed-ko =j=j+j+j+j
+Defining defrule: solve-count-safe =j+j+j+j+j
+Defining defrule: solve-sink-count =j+j+j+j+j
+Defining deffunction: scoring
+Defining defrule: solve-scoring =j+j+j
+Defining defrule: reset-map +j+j+j+j
+Defining defrule: make-visible-sub =j+j+j+j+j
+Defining defrule: make-visible-left =j=j+j+j+j
+Defining defrule: make-visible-right =j=j+j+j+j
+Defining defrule: make-visible-top =j=j+j+j+j
+Defining defrule: make-visible-bot =j=j+j+j+j
+Defining defrule: make-visible-middle =j=j+j+j
+TRUE
+CLIPS> (load case1_obs_2.clp)
+[ARGACCES2] Function load was unable to open file case1_obs_2.clp.
+FALSE
+CLIPS> (load 3_Agent.clp)
+Defining defmodule: AGENT
+Defining deftemplate: g-cell
+Defining defrule: initialize-g-cell +j+j
+
+[CSTRCPSR1] WARNING: Redefining defrule: initialize-g-cell 
+[EXPRNPSR3] Missing function declaration for defrule.
+
+ERROR:
+(defrule AGENT::initialize-g-cell
+   (declare (salience 30))
+   ?xFact <- (initX ?x&:(>= ?x 0)&:(<= ?x 9))
+   (initY ?y&:(>= ?y 0)&:(<= ?y 9))
+   =>
+   (assert (g-cell (x ?x) (y ?y)))
+   (bind ?newX (+ ?x 1))
+   (retract ?xFact)
+   (assert (initX ?newX))
+   (defrule
+Defining defrule: initialize-g-cell +j+j+j
+Defining defrule: remove-know-g-cell 
+[EXPRNPSR1] A function name must be a symbol
+
+ERROR:
+(defrule AGENT::remove-know-g-cell
+   (declare (salience 20))
+   ?gcell <- (g-cell (x ?x) (y ?y))
+   (k-cell (x ?x) (y ?y))
+   =>
+   (retract (?gcell
+Defining defrule: update-g-cell +j+j
+Defining defrule: fire-best-g-cell [ARGACCES5] Function > expected argument #1 to be of type integer or float
+
+ERROR:
+(defrule AGENT::fire-best-g-cell
+   (status (step ?s) (currently running))
+   (moves (fires ?mov&:(> ?mov 0)))
+   (g-cell (x ?x) (y ?y) (probability ?probability1))
+   (not (g-cell (probability ?probability2&:(> probability2 probability1)
+Defining defrule: guess-best-g-cell 
+[TMPLTDEF1] Invalid slot fire not defined in corresponding deftemplate moves.
+
+ERROR:
+(defrule AGENT::guess-best-g-cell
+   (status (step ?s) (currently running))
+   (moves (fire
+Defining defrule: print-what-i-know-since-the-beginning +j+j
+FALSE
+CLIPS> (reset)
+CLIPS> (set-break game-over)
+CLIPS> (run)
+CLIPS> (run 2)
+CLIPS> (focus ENV)
+TRUE
+CLIPS> (facts)
+f-0     (initial-fact)
+f-1     (maxduration 100)
+f-2     (status (step 0) (currently running))
+f-3     (statistics (num_fire_ok 0) (num_fire_ko 0) (num_guess_ok 0) (num_guess_ko 0) (num_safe 0) (num_sink 0))
+f-5     (moves (fires 5) (guesses 20))
+For a total of 5 facts.
+CLIPS> (dribble-off)

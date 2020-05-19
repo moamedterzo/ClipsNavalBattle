@@ -103,6 +103,7 @@
 	?fc <- (cell (x ?x) (y ?y) (content water) (status none))
 	?st <- (statistics (num_fire_ko ?fko))
 =>
+    (assert (k-cell (x ?x) (y ?y) (content water)));riga aggiunta
 	(modify ?fc (status missed))
         (modify ?st (num_fire_ko (+ ?fko 1)))
 )
