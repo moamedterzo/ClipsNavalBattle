@@ -332,6 +332,82 @@
 	(modify ?col (g-cells ?newNumCellsCol))
 )
 ;todo gestione middle quando colonne o righe non ci sono
+(defrule remove-g-cell-middle-without-row-or-column (declare (salience 20))
+ (k-cell (x ?x) (y ?y) (content middle))
+ ?gcell <- (g-cell (x ?gx) (y ?gy))
+ ?row <- (g-per-row (row ?gx) (g-cells ?numCellsRow))
+ ?col <- (g-per-col (col ?gy) (g-cells ?numCellsCol))
+ (or 
+		(and (test (eq ?y 9))
+		     (test (eq (- ?y ?gy) 1))
+			 (test (<= (abs (- ?gx ?x)) 1))
+		)
+
+		(and (test (eq ?y 0))
+		     (test (eq (- ?gy ?y) 1))
+			 (test (<= (abs (- ?x ?gx)) 1))
+		)        
+
+		(and (test (eq ?x 9))
+		     (test (eq (- ?x ?gx) 1))
+			 (test (<= (abs (- ?gy ?y)) 1))
+		)
+
+		(and (test (eq ?x 0))
+		     (test (eq (- ?gx ?x) 1))
+			 (test (<= (abs (- ?y ?gy)) 1))
+		)
+	)
+ =>
+ (printout t "REMOVED MIDDLE[" ?gx ", " ?gy "]" crlf)
+ (retract ?gcell)
+ 
+	(bind ?newNumCellsRow (- ?numCellsRow 1))
+	(bind ?newNumCellsCol (- ?numCellsCol 1))
+	(modify ?row (g-cells ?newNumCellsRow))
+	(modify ?col (g-cells ?newNumCellsCol))
+	(modify ?gcell (probability 1))
+)
+
+(defrule remove-g-cell-middle-horizontal(declare (salience 20))
+ (k-cell (x ?x) (y ?y) (content middle))
+ (k-cell (x ?x) (y ?y2&:(eq (abs(- ?y ?y2)) 1)) (content ~water))
+ ?gcell <- (g-cell (x ?gx) (y ?gy))
+ ?row <- (g-per-row (row ?gx) (g-cells ?numCellsRow))
+ ?col <- (g-per-col (col ?gy) (g-cells ?numCellsCol))
+ (and (test (<= (abs(- ?y ?gy)) 1))
+	  (test (eq (abs(- ?gx ?x)) 1))
+ )
+ =>
+ (printout t "REMOVED MIDDLE [" ?gx ", " ?gy "]" crlf)
+ (retract ?gcell)
+ 
+	(bind ?newNumCellsRow (- ?numCellsRow 1))
+	(bind ?newNumCellsCol (- ?numCellsCol 1))
+	(modify ?row (g-cells ?newNumCellsRow))
+	(modify ?col (g-cells ?newNumCellsCol))
+	(modify ?gcell (probability 1))
+)
+
+(defrule remove-g-cell-middle-vertical(declare (salience 20))
+ (k-cell (x ?x) (y ?y) (content middle))
+ (k-cell (x ?x2&:(eq (abs(- ?x ?x2)) 1)) (y ?y) (content ~water))
+ ?gcell <- (g-cell (x ?gx) (y ?gy))
+ ?row <- (g-per-row (row ?gx) (g-cells ?numCellsRow))
+ ?col <- (g-per-col (col ?gy) (g-cells ?numCellsCol))
+ (and (test (<= (abs(- ?x ?gx)) 1))
+			 (test (eq (abs(- ?gy ?y)) 1))
+ )
+ =>
+ (printout t "REMOVED MIDDLE [" ?gx ", " ?gy "]" crlf)
+ (retract ?gcell)
+ 
+	(bind ?newNumCellsRow (- ?numCellsRow 1))
+	(bind ?newNumCellsCol (- ?numCellsCol 1))
+	(modify ?row (g-cells ?newNumCellsRow))
+	(modify ?col (g-cells ?newNumCellsCol))
+	(modify ?gcell (probability 1))
+)
 
 ;calcolo probabilità
 (defrule reset-update-cell-probability (declare (salience 19))
@@ -382,8 +458,6 @@
 )
 
 
-
-
 (defrule fire-best-g-cell
 	?upd <- (agent-updated)
 	(status (step ?s) (currently running))
@@ -395,6 +469,17 @@
 	(retract ?upd)
 	(printout t "Firing [" ?x ", " ?y "]" crlf)
     (pop-focus)
+)
+
+(defrule guess-best-g-cell-with-row-or-columns-only-ship
+	(status (step ?s)(currently running))
+	(moves (fires 0) (guesses ?mov&:(> ?mov 0)))
+	?gcell <- (g-cell (x ?x) (y ?y) (probability 1))
+	=>
+	(retract ?gcell)
+	(assert (exec (step ?s) (action guess) (x ?x) (y ?y)))
+    (printout t "Guessing row-or-columns-only-ship [" ?x ", " ?y "]" crlf)
+	(pop-focus)
 )
 
 (defrule guess-best-g-cell	
@@ -417,9 +502,6 @@
 	(assert (exec (step ?s) (action solve)))
     (pop-focus)
 )
-
-
-
 
 (defrule print-what-i-know-since-the-beginning 
 	(declare (salience -10))
