@@ -9,16 +9,27 @@
 	(slot row)
 	(slot num)
 	(multislot g-cells)
+	(multislot gk-cells)
 )
 
 (deftemplate g-per-col
 	(slot col)
 	(slot num)
 	(multislot g-cells)
+	(multislot gk-cells)
 )
 
+(deftemplate g-boat
+	(slot size)
+	(slot alignment (allowed-values hor ver))
+	(slot mainColRow)
+	(multislot secColRow)
+)
+
+
+
 ;inizializzazione celle 
-(defrule initialize-g-cells (declare (salience 20))	
+(defrule initialize-g-cells (declare (salience 100))	
 =>
 	(loop-for-count (?x 0 9) do
     (loop-for-count (?y 0 9) do
@@ -26,26 +37,58 @@
 		))
 )
 
-(defrule initialize-g-row (declare (salience 20))
+(defrule initialize-g-row (declare (salience 100))
 	(k-per-row (row ?r) (num ?n))
 	=>
-	(assert (g-per-row (row ?r) (num ?n) (g-cells 0 1 2 3 4 5 6 7 8 9)))
+	(assert (g-per-row (row ?r) (num ?n) (g-cells 0 1 2 3 4 5 6 7 8 9) (gk-cells 0 1 2 3 4 5 6 7 8 9)))
 )
-(defrule initialize-g-col (declare (salience 20))
+(defrule initialize-g-col (declare (salience 100))
 	(k-per-col (col ?r) (num ?n))
 	=>
-	(assert (g-per-col (col ?r) (num ?n) (g-cells 0 1 2 3 4 5 6 7 8 9)))
+	(assert (g-per-col (col ?r) (num ?n) (g-cells 0 1 2 3 4 5 6 7 8 9) (gk-cells 0 1 2 3 4 5 6 7 8 9)))
 )
-
 ;fine inizializzazione
-(defrule update-status-cells (declare (salience 10))
+
+
+;focus inferenze base
+(defrule update-status-cells (declare (salience 50))
 	(not (agent-updated))
 =>
 	(focus AGENT_CELL_BASE_INFERENCE)
 )
 
 
-(defrule fire-best-g-cell
+;;;;;;;;;;;calcolo probabilità
+(defrule reset-update-cell-probability (declare (salience 10))
+	?gcell <- (g-cell (x ?x) (y ?y) (updated 1) (probability ~1))
+	(not (agent-updated))
+=>
+	(modify ?gcell (updated 0))
+)
+
+(defrule set-updated (declare (salience 9))
+	(not (agent-updated))
+=>
+	(assert (agent-updated))
+)
+
+(defrule update-g-cell-probability (declare (salience 5))
+	?gcell <- (g-cell (x ?x) (y ?y) (updated 0))
+	(g-per-row (row ?x) (num ?numRow) (g-cells $?rows))
+	(g-per-col (col ?y) (num ?numCol) (g-cells $?cols))	
+=>
+	(bind ?numCellsRow (length$ $?rows))
+	(bind ?numCellsCol (length$ $?cols))
+
+	(bind ?probability (/ (+ (/ ?numRow ?numCellsRow) (/ ?numCol ?numCellsCol)) 2))
+	(printout t "Probability cell [" ?x ", " ?y "] = " ?probability "." crlf)
+	(modify ?gcell (updated 1) (probability ?probability))
+)
+
+
+
+
+(defrule fire-best-g-cell (declare (salience -20))
 	?upd <- (agent-updated)
 	(status (step ?s) (currently running))
 	(moves (fires ?mov &:(> ?mov 0)))
@@ -59,7 +102,7 @@
     (pop-focus)
 )
 
-(defrule guess-best-g-cell-with-row-or-columns-only-ship
+(defrule action-guess-g-cell-sure (declare (salience -20))
 	(status (step ?s)(currently running))
 	(moves (fires 0) (guesses ?mov&:(> ?mov 0)))
 	?gcell <- (g-cell (x ?x) (y ?y) (fired 0) (probability 1))
@@ -70,10 +113,10 @@
 	(pop-focus)
 )
 
-(defrule guess-best-g-cell (declare (salience -10))
+(defrule guess-best-g-cell (declare (salience -21))
 	(status (step ?s)(currently running))
 	(moves (fires 0) (guesses ?mov&:(> ?mov 0)))
-	?gcell <- (g-cell (x ?x) (y ?y) (probability ?probability1&~1&~0) (fired 0))
+	?gcell <- (g-cell (x ?x) (y ?y) (probability ?probability1&~0) (fired 0))
 	(not (g-cell (probability ?probability2&:(> ?probability2 ?probability1)) (fired 0)))
 	=>
 	(modify ?gcell (fired 1))
@@ -82,7 +125,7 @@
 	(pop-focus)
 )
 
-(defrule solve	
+(defrule solve-no-more-moves
 	(status (step ?s)(currently running))
 	(moves (fires 0) (guesses 0))
 	=>
@@ -90,7 +133,7 @@
     (pop-focus)
 )
 
-(defrule solve2 
+(defrule solve-no-more-cells
 	(status (step ?s)(currently running))
 	(not (g-cell (fired 0) (probability ~0)))
 	=>
@@ -105,4 +148,3 @@
 =>
 	(printout t "I know that cell [" ?x ", " ?y "] contains " ?t "." crlf)
 )
-
