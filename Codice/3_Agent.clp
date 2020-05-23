@@ -39,6 +39,7 @@
 
 ;inizializzazione celle 
 (defrule initialize-g-cells (declare (salience 100))	
+(not (initialized))
 =>
 	(loop-for-count (?x 0 9) do
     (loop-for-count (?y 0 9) do
@@ -46,15 +47,31 @@
 		))
 )
 
+(defrule set-initial-k-cell-g-cells (declare (salience 100))	
+	(not (initialized))
+    ?gcell <- (g-cell (x ?x) (y ?y) (fired 0))
+	(k-cell (x ?x) (y ?y))
+	=>
+	(modify ?gcell (fired 1))
+)
+
 (defrule initialize-g-row (declare (salience 100))
+	(not (initialized))
 	(k-per-row (row ?r) (num ?n))
 	=>
 	(assert (g-per-row (row ?r) (num ?n) (g-cells 0 1 2 3 4 5 6 7 8 9) (gk-cells 0 1 2 3 4 5 6 7 8 9)))
 )
 (defrule initialize-g-col (declare (salience 100))
+	(not (initialized))
 	(k-per-col (col ?r) (num ?n))
 	=>
 	(assert (g-per-col (col ?r) (num ?n) (g-cells 0 1 2 3 4 5 6 7 8 9) (gk-cells 0 1 2 3 4 5 6 7 8 9)))
+)
+
+(defrule set-initialized (declare (salience 99))
+	(not (initialized))
+	=>
+	(assert (initialized))
 )
 ;fine inizializzazione
 
@@ -111,7 +128,7 @@
 (defrule make-agent-decision (declare (salience -10))
 	(status (step ?s) (currently running))
 =>
-	(focus AGENT_DECISION)
+(focus AGENT_DECISION)
 )
 
 
