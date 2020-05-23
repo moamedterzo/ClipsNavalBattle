@@ -1,1 +1,7 @@
-jyuiyuiyui
+fare delle guess solo se la probabilità supera una certa soglia
+fare maggiori inferenze riguardo il numero di navi ancora attive
+
+
+NOTE DAL VIDEO
+far notare le differenze che nascono quando si sanno più o meno informazioni iniziali
+per il prof la fire serve per effettuare una disambiguazione, capire meglio il board

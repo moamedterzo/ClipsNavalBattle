@@ -74,4 +74,3 @@
 	(first-pass-to-env)
 	(moves (fires 5) (guesses 20) )
 )
-

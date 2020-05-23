@@ -19,11 +19,20 @@
 	(multislot gk-cells)
 )
 
+
 (deftemplate g-boat
 	(slot size)
 	(slot alignment (allowed-values hor ver))
 	(slot mainColRow)
 	(multislot secColRow)
+)
+
+(deftemplate comb-boat
+	(slot size)
+	(slot alignment (allowed-values hor ver))
+	(slot mainColRow)
+	(multislot secColRow);contiene tutte le celle tranne quelle per le quali la probabilità è 1
+	(multislot initialSecColRow);contiene tutte le celle della combinazione
 )
 
 
@@ -59,20 +68,22 @@
 
 
 ;;;;;;;;;;;calcolo probabilità
-(defrule reset-update-cell-probability (declare (salience 10))
+(defrule reset-update-cell-probability (declare (salience 12))
 	?gcell <- (g-cell (x ?x) (y ?y) (updated 1) (probability ~1))
 	(not (agent-updated))
 =>
 	(modify ?gcell (updated 0))
 )
 
-(defrule set-updated (declare (salience 9))
+(defrule set-updated (declare (salience 11))
 	(not (agent-updated))
 =>
 	(assert (agent-updated))
 )
 
-(defrule update-g-cell-probability (declare (salience 5))
+
+
+(defrule update-g-cell-probability (declare (salience 10))
 	?gcell <- (g-cell (x ?x) (y ?y) (updated 0))
 	(g-per-row (row ?x) (num ?numRow) (g-cells $?rows))
 	(g-per-col (col ?y) (num ?numCol) (g-cells $?cols))	
@@ -85,46 +96,7 @@
 	(modify ?gcell (updated 1) (probability ?probability))
 )
 
-
-
-
-(defrule fire-best-g-cell (declare (salience -20))
-	?upd <- (agent-updated)
-	(status (step ?s) (currently running))
-	(moves (fires ?mov &:(> ?mov 0)))
-	?gcell <- (g-cell (x ?x) (y ?y) (probability ?probability1) (fired 0))
-	(not (g-cell (probability ?probability2&:(> ?probability2 ?probability1)) (fired 0)))
-	=>		
-	(assert (exec (step ?s) (action fire) (x ?x) (y ?y)))
-	(modify ?gcell (fired 1))
-	(retract ?upd)
-	(printout t "Firing [" ?x ", " ?y "]" crlf)
-    (pop-focus)
-)
-
-(defrule action-guess-g-cell-sure (declare (salience -20))
-	(status (step ?s)(currently running))
-	(moves (fires 0) (guesses ?mov&:(> ?mov 0)))
-	?gcell <- (g-cell (x ?x) (y ?y) (fired 0) (probability 1))
-	=>
-	(modify ?gcell (fired 1))
-	(assert (exec (step ?s) (action guess) (x ?x) (y ?y)))
-    (printout t "Guessing row-or-columns-only-ship [" ?x ", " ?y "]" crlf)
-	(pop-focus)
-)
-
-(defrule guess-best-g-cell (declare (salience -21))
-	(status (step ?s)(currently running))
-	(moves (fires 0) (guesses ?mov&:(> ?mov 0)))
-	?gcell <- (g-cell (x ?x) (y ?y) (probability ?probability1&~0) (fired 0))
-	(not (g-cell (probability ?probability2&:(> ?probability2 ?probability1)) (fired 0)))
-	=>
-	(modify ?gcell (fired 1))
-	(assert (exec (step ?s) (action guess) (x ?x) (y ?y)))
-    (printout t "Guessing [" ?x ", " ?y "]" crlf)
-	(pop-focus)
-)
-
+;condizioni di stop
 (defrule solve-no-more-moves
 	(status (step ?s)(currently running))
 	(moves (fires 0) (guesses 0))
@@ -133,18 +105,23 @@
     (pop-focus)
 )
 
-(defrule solve-no-more-cells
-	(status (step ?s)(currently running))
-	(not (g-cell (fired 0) (probability ~0)))
-	=>
-	(assert (exec (step ?s) (action solve)))
-    (pop-focus)
+
+
+;focus sul modulo che effettua le scelte
+(defrule make-agent-decision (declare (salience -10))
+	(status (step ?s) (currently running))
+=>
+	(focus AGENT_DECISION)
 )
+
+
+
+
 
 
 (defrule print-what-i-know-since-the-beginning 
 	(declare (salience -10))
-	(g-cell (x ?x) (y ?y) (content ?t) )
+	(g-cell (x ?x) (y ?y) (content ?t&~nil) )
 =>
 	(printout t "I know that cell [" ?x ", " ?y "] contains " ?t "." crlf)
 )

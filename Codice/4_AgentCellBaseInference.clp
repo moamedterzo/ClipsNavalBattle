@@ -1,8 +1,8 @@
-(defmodule AGENT_CELL_BASE_INFERENCE (import AGENT ?ALL))
+(defmodule AGENT_CELL_BASE_INFERENCE (import AGENT ?ALL) (export ?ALL))
 
 
 ;regola che scala di uno i candidati quando la probabilità è 0
-(defrule manage-water-g-cell (declare (salience 10))
+(defrule manage-water-g-cell (declare (salience 50))
 	?gcell <- (g-cell (x ?x) (y ?y) (probability 0))
 	?row <- (g-per-row (row ?x) (g-cells $?rows) (gk-cells $?gkrows))
 	?col <- (g-per-col (col ?y) (g-cells $?cols) (gk-cells $?gkcols))
@@ -15,12 +15,240 @@
 )
 
 ;ogni volta che c'è una nuova k-cell, aggiorno la probabilità della g-cell
-(defrule initialize-fired-g-cell-boat (declare (salience 10))
+(defrule initialize-fired-g-cell-boat (declare (salience 50))
 	(k-cell (x ?x) (y ?y) (content ?content&~water))
 	?gcell <- (g-cell (x ?x) (y ?y) (content nil))
 =>
 	(modify ?gcell (probability 1) (content ?content))
 )
+
+
+
+;se ho trovato tutte le navi per quella combinazione, allora le elimino perche non servono piu
+(defrule remove-boat-combinations-when-found (declare (salience 50))
+     (found-all-boats ?size)
+	 ?comb <- (comb-boat (size ?size))
+	 =>
+	 (retract ?comb)
+)
+
+;quando non ho ancora trovato una barca da 4, genero tutte le combinazioni possibili
+(defrule initialize-4-boat-combinations-row (declare (salience 40))
+	(not (initialized-combinations))
+	(not (found-all-boats 4))
+	(g-per-row (row ?x) (gk-cells $? ?y ?yp1 ?yp2 ?yp3 $?) (num ?numCells))	
+	(test (and (eq ?yp1 (+ ?y 1)) (eq ?yp2 (+ ?y 2)) (eq ?yp3 (+ ?y 3))))	
+	(test (<= 4 ?numCells))
+	=>
+	(assert (comb-boat (size 4) (alignment hor) (mainColRow ?x) (secColRow ?y ?yp1 ?yp2 ?yp3) (initialSecColRow ?y ?yp1 ?yp2 ?yp3)))
+)
+(defrule initialize-4-boat-combinations-col (declare (salience 40))
+	(not (initialized-combinations))
+	(not (found-all-boats 4))
+	(g-per-col (col ?x) (gk-cells $? ?y ?yp1 ?yp2 ?yp3 $?) (num ?numCells))
+	(test (and (eq ?yp1 (+ ?y 1)) (eq ?yp2 (+ ?y 2)) (eq ?yp3 (+ ?y 3))))	
+	(test (<= 4 ?numCells))
+	=>
+	(assert (comb-boat (size 4) (alignment ver) (mainColRow ?x) (secColRow ?y ?yp1 ?yp2 ?yp3) (initialSecColRow ?y ?yp1 ?yp2 ?yp3)))
+)
+
+;inizializzazione combinazioni di 3 navi
+(defrule initialize-3-boat-combinations-row (declare (salience 40))
+	(not (initialized-combinations))
+	(not (found-all-boats 3))
+	(g-per-row (row ?x) (gk-cells $? ?y ?yp1 ?yp2 $?) (num ?numCells))
+	(test (and (eq ?yp1 (+ ?y 1)) (eq ?yp2 (+ ?y 2))))	
+	(test (<= 3 ?numCells))
+	=>
+	(assert (comb-boat (size 3) (alignment hor) (mainColRow ?x) (secColRow ?y ?yp1 ?yp2) (initialSecColRow ?y ?yp1 ?yp2)))
+)
+(defrule initialize-3-boat-combinations-col (declare (salience 40))
+	(not (initialized-combinations))
+	(not (found-all-boats 3))
+	(g-per-col (col ?x) (gk-cells $? ?y ?yp1 ?yp2 $?) (num ?numCells))
+	(test (and (eq ?yp1 (+ ?y 1)) (eq ?yp2 (+ ?y 2))))	
+	(test (<= 3 ?numCells))
+	=>
+	(assert (comb-boat (size 3) (alignment ver) (mainColRow ?x) (secColRow ?y ?yp1 ?yp2) (initialSecColRow ?y ?yp1 ?yp2)))
+)
+
+(defrule ok-combination-initialization (declare (salience 39))
+	=>
+	(assert (initialized-combinations))
+)
+
+
+
+;se non esiste piu quella cella per la combinazione, allora la combinazione non è piu consistente e viene eliminata
+(defrule no-g-cell-combination-hor (declare (salience 10))	
+    ?comb <- (comb-boat (alignment hor) (mainColRow ?x) (secColRow $? ?y $?))
+	(not (g-cell (x ?x) (y ?y)))
+	=>
+	(retract ?comb)
+)
+(defrule no-g-cell-combination-ver (declare (salience 10))	
+    ?comb <- (comb-boat (alignment ver) (mainColRow ?y) (secColRow $? ?x $?))
+	(not (g-cell (x ?x) (y ?y)))
+	=>
+	(retract ?comb)
+)
+
+;rimuovo dalla combinazione quelle celle che sono sicure posseggano qualcosa
+;queste due regole devono avere una salience maggiore di update-candidate-g-cell-boat
+(defrule remove-g-cell-sure-from-combination-ver (declare (salience 10))	
+    (g-cell (x ?x) (y ?y) (probability 1))
+	?comb <- (comb-boat (alignment ver) (mainColRow ?y) (secColRow $?rows&:(member$ ?x $?rows)))	
+	=>
+	(modify ?comb (secColRow (delete-member$ $?rows ?x)))
+)
+(defrule remove-g-cell-sure-from-combination-hor (declare (salience 10))	
+    (g-cell (x ?x) (y ?y) (probability 1))
+	?comb <- (comb-boat (alignment hor) (mainColRow ?x) (secColRow $?cols&:(member$ ?y $?cols)))	
+	=>
+	(modify ?comb (secColRow (delete-member$ $?cols ?y)))
+)
+
+;se trovo una nave, allora le combinazioni che contengono le celle della nave vengono scartate
+;devono avere una salience maggiore delle regole che trovano le navi dalle combinazioni
+(defrule update-known-boat-for-combinations-1 (declare (salience 10))
+	(g-boat (alignment ?alignment) (mainColRow ?x) (secColRow $? ?y $?))
+	?comb <- (comb-boat (alignment ?alignment) (mainColRow ?x) (initialSecColRow $?cols&:(member$ ?y $?cols)))	
+=>	
+	(retract ?comb)
+)
+(defrule update-known-boat-for-combinations-2 (declare (salience 10))
+	(g-boat (alignment ?alignmentBoat) (mainColRow ?boatX) (secColRow $?boatCols))
+	?comb <- (comb-boat (alignment ?alignmentComb&~?alignmentBoat) 
+				(mainColRow ?combX) (initialSecColRow $?combCols)
+			 )
+	(and (member$ ?combX $?boatCols) (member$ ?boatX $?combCols))	
+=>	
+	(retract ?comb)
+)
+
+;rimuovo tutte quelle combinazioni che hanno un numero di celle maggiore delle celle 
+;ancora da trovare per quella riga/colonna
+;ossia se una colonna deve avere massimo altre 2 celle, e la combinazione ne richiede 3, allora 
+;quella combinazione è inconsistente
+(defrule remove-comb-hor-not-enough-cells	
+	?comb <- (comb-boat (alignment hor)	(mainColRow ?x) (secColRow $?cells))
+	(g-per-row (row ?x) (num ?numCells))
+	
+	(test (> (length$ $?cells) ?numCells))
+=>	
+	(retract ?comb)
+)
+(defrule remove-comb-ver-not-enough-cells	
+	?comb <- (comb-boat (alignment ver)	(mainColRow ?y) (secColRow $?cells))
+	(g-per-col (col ?y) (num ?numCells))	
+	(test (> (length$ $?cells) ?numCells))
+=>	
+	(retract ?comb)
+)
+
+;rimuovo tutte le combinazioni verticali che hanno nelle proprie vicinanze una cella sicura
+(defrule remove-comb-ver-for-orthogonal-cells
+	?comb <- (comb-boat (alignment ver)	(mainColRow ?y) (secColRow $?cells))
+	(g-cell (probability 1) (y ?yCell&:(eq 1 (abs (- ?y ?yCell)))) (x ?xCell&:(member$ ?xCell $?cells)))
+	=>
+	(retract ?comb)
+)
+(defrule remove-comb-hor-for-orthogonal-cells
+	?comb <- (comb-boat (alignment hor)	(mainColRow ?x) (secColRow $?cells))
+	(g-cell (probability 1)(x ?xCell&:(eq 1 (abs (- ?x ?xCell)))) (y ?yCell&:(member$ ?yCell $?cells)))
+	=>
+	(retract ?comb)
+)
+
+;se c'è una sola combinazione da 4 allora quella contiene sicuramente la nave da 4
+; (defrule reveal-4-boat-from-unique-comb (declare (salience -10))
+; 	(not (found-all-boats 4))
+; 	(comb-boat (size 4) (alignment ?alignment) (mainColRow ?mainColRow) (secColRow $?cells))
+; 	(not (comb-boat (size 4)))
+; 	=>
+; 	(printout t  "Comb sgamata " ?mainColRow "-" ?cells crlf)
+; 	(assert (g-boat (size 4) (alignment ?alignment) (mainColRow ?mainColRow) (secColRow $?cells)))
+; )
+; (defrule reveal-3-boat-from-unique-comb (declare (salience -10))
+; 	(not (found-all-boats 3))
+; 	(comb-boat (size 3) (alignment ?alignment) (mainColRow ?mainColRow) (secColRow $?cells))
+; 	(not (comb-boat (size 3)))
+; 	=>
+; 	(printout t  "Comb sgamata " ?mainColRow "-" ?cells crlf)
+; 	(assert (g-boat (size 3) (alignment ?alignment) (mainColRow ?mainColRow) (secColRow $?cells)))
+; )
+(defrule reveal-3-boat-from-two-unique-comb (declare (salience -10))
+	(not (g-boat (size 3)))
+	?boat1 <- (comb-boat (size 3) (alignment ?alignment1) (mainColRow ?mainColRow1) (secColRow $?cells1))
+	?boat2 <- (comb-boat (size 3) (alignment ?alignment2) (mainColRow ?mainColRow2) (secColRow $?cells2))	
+	(not (comb-boat (size 3)))
+	=>
+	(printout t  "Comb sgamata2 " ?mainColRow1 "-" ?cells1 crlf)
+	(assert (g-boat (size 3) (alignment ?alignment1) (mainColRow ?mainColRow1) (secColRow $?cells1)))
+	(assert (g-boat (size 3) (alignment ?alignment2) (mainColRow ?mainColRow2) (secColRow $?cells2)))
+)
+
+;funzione
+(deffunction cell-in-comb
+(?xCell ?yCell ?combAlign ?combMainColRow ?combCells)
+(or (and (eq ?combAlign ver) (eq ?combMainColRow ?yCell) (member$ ?xCell $?combCells))
+    (and (eq ?combAlign hor) (eq ?combMainColRow ?xCell) (member$ ?yCell $?combCells)))
+)
+
+
+;se una cella è presente in tutte le combinazioni possibili, allora sicuramente avrà qualcosa
+(defrule reveal-sure-cell-from-4-combinations (declare (salience -10))
+	
+	?gcell <- (g-cell (x ?x) (y ?y) (probability ~1))
+	(comb-boat (size 4) (alignment ?alignment) (mainColRow ?mainColRow) (secColRow $?cells))
+	(test (cell-in-comb ?x ?y ?alignment ?mainColRow $?cells))
+	(forall
+		(comb-boat (size 4) (alignment ?subAlignment) (mainColRow ?subMainColRow) (secColRow $?subCells))
+		(test (cell-in-comb ?x ?y ?subAlignment ?subMainColRow $?subCells))
+	)
+	=>
+	(modify ?gcell (probability 1))
+)
+(defrule reveal-sure-cell-from-3-combinations (declare (salience -10))
+	?gcell <- (g-cell (x ?x) (y ?y) (probability ~1))
+	(comb-boat (size 3) (alignment ?alignment) (mainColRow ?mainColRow) (secColRow $?cells))
+	(test (cell-in-comb ?x ?y ?alignment ?mainColRow $?cells))
+	(forall
+		(comb-boat (size 3) (alignment ?subAlignment) (mainColRow ?subMainColRow) (secColRow $?subCells))
+		(test (cell-in-comb ?x ?y ?subAlignment ?subMainColRow $?subCells))
+	)
+	=>
+	(printout t  "Cella sgamata2 " ?x "-" ?y crlf)
+	(printout t  "Comb " ?alignment " " ?mainColRow " " $?cells crlf)
+	(modify ?gcell (probability 1))
+)
+
+
+
+;fine inferenze complesse
+
+
+
+
+;se ci sono due celle vicine con probabilità 1, allora ciò che sta intorno è acqua
+(defrule water-for-contiguous-cells-hor
+	(g-cell (x ?x) (y ?y) (probability 1))
+	(g-cell (x ?x) (y ?y1&:(eq 1 (abs (- ?y ?y1)))) (probability 1))
+	?gcell <- (g-cell (x ?xCell&:(eq 1 (abs (- ?x ?xCell)))) (y ?yCell))
+	(or (test (>= 1 (abs (- ?y ?yCell)))) (test (>= 1 (abs (- ?y1 ?yCell)))))
+	=>
+	(modify ?gcell (probability 0))
+)
+(defrule water-for-contiguous-cells-ver
+	(g-cell (y ?y) (x ?x) (probability 1))
+	(g-cell (y ?y) (x ?x1&:(eq 1 (abs (- ?x ?x1)))) (probability 1))
+	?gcell <- (g-cell (y ?yCell&:(eq 1 (abs (- ?y ?yCell)))) (x ?xCell))
+	(or (test (>= 1 (abs (- ?x ?xCell)))) (test (>= 1 (abs (- ?x1 ?xCell)))))
+	=>
+	(modify ?gcell (probability 0))
+)
+
+
 
 
 ;ogni volta che c'è una g-cell sicura, aggiorno il conteggio delle righe e colonne
@@ -125,7 +353,7 @@
 )
 
 ;regole che indicano quando sono finite le navi da 4, 3 o 2
-(defrule found-all-boat-1
+(defrule found-all-boat-1 (declare (salience 20))
 	?boat1a <- (g-boat (size 1))
 	?boat1b <- (g-boat (size 1))
 	?boat1c <- (g-boat (size 1))
@@ -138,7 +366,7 @@
 	(assert (found-all-boats 1))
 )
 
-(defrule found-all-boat-2
+(defrule found-all-boat-2 (declare (salience 20))
 	?boat2a <- (g-boat (size 2))
 	?boat2b <- (g-boat (size 2))
 	?boat2c <- (g-boat (size 2))
@@ -148,7 +376,7 @@
 	(assert (found-all-boats 2))
 )
 
-(defrule found-all-boat-3
+(defrule found-all-boat-3 (declare (salience 20))
 	?boat3a <- (g-boat (size 3))
 	?boat3b <- (g-boat (size 3))
 	(test (< (fact-index ?boat3a) (fact-index ?boat3b)))
@@ -156,7 +384,7 @@
 	(assert (found-all-boats 3))
 )
 
-(defrule found-all-boat-4
+(defrule found-all-boat-4 (declare (salience 20))
 	(g-boat (size 4))
 =>
 	(assert (found-all-boats 4))
@@ -317,13 +545,6 @@
 )
 
 
-(defrule only-one-slot-for-4-boat
-	(g-per-row (row ?x) (gk-cells $?rowCells&:(>= (length$ $?rowCells) 4)))
-
-	=> (assert (only-one-slot-for-4-boat))
-)
-
-
 ;rimozione celle troppo piccole per contenere una nave
 (defrule remove-g-cell-no-2-boat 
 	(found-all-boats 1)
@@ -398,14 +619,6 @@
 	(modify ?gcell (probability 0))
 )
 
-;regola che vede se esiste un unico slot possibile per una nave da 4
-(defrule reveal-for-4-boat 
-	(not (found-all-boats 4))
-	(only-one-slot-for-4-boat)
-	
-	=>
-)
-
 
 
 ;fine inferenze basate su navi rimanenti
@@ -444,6 +657,7 @@
 (defrule remove-g-cell-sub 
 	(g-cell (x ?x) (y ?y) (content sub))
 	?gcell <- (g-cell (x ?gx&:(<= (abs(- ?gx ?x)) 1)) (y ?gy&:(<= (abs(- ?gy ?y)) 1)))
+	(test (or (neq ?gx ?x) (neq ?gy ?y)))
 	=>
 	(modify ?gcell (probability 0))
 )
@@ -451,7 +665,7 @@
 (defrule inference-g-cell-sub 
 	?gcell <- (g-cell (x ?x) (y ?y) (probability 1) (content nil))
 	(and (not (g-cell (x ?x) (y ?y2&:(eq 1 (abs (- ?y ?y2))))))
-	 	 (not (g-cell (x ?x2&:(eq 1 (abs (- ?x ?x2)))) (y ?y2)))
+	 	 (not (g-cell (x ?x2&:(eq 1 (abs (- ?x ?x2)))) (y ?y)))
 	)
 	=>
 	(modify ?gcell (content sub))
