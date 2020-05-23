@@ -2,7 +2,7 @@
 (clear)
 (load 0_Main.clp)
 (load 1_Env.clp)
-(load Mappe/sparse_poco.clp)
+(load Mappe/sparse_molto.clp)
 (load 3_Agent.clp)
 (load 4_AgentCellBaseInference.clp)
 (load 5_AgentDecision.clp)
