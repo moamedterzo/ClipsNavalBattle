@@ -24,7 +24,6 @@
 	(status (step ?s)(currently running))
 	(moves (fires 0) (guesses ?mov&:(> ?mov 0)))
 
-	(min-probability ?minProb) ;si ottiene la soglia di probabilità
 	?gcell <- (g-cell (x ?x) (y ?y) (probability ?probability1) (considered 0))
 	(not (g-cell (probability ?probability2&:(> ?probability2 ?probability1)) (considered 0)))
 	=>
