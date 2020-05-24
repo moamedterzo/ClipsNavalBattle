@@ -17,6 +17,7 @@
 	(retract ?upd)
 	(printout t "Firing [" ?x ", " ?y "]" crlf)
     (pop-focus)
+	(pop-focus)
 )
 
 ;si guessano prima le celle sicure
@@ -31,6 +32,7 @@
 	(assert (exec (step ?s) (action guess) (x ?x) (y ?y)))
     (printout t "Guessing [" ?x ", " ?y "]" crlf)
 	(pop-focus)
+	(pop-focus)
 )
 
 ;se non ci sono più celle da considerare che hanno una probabilità superiore a zero, allora si termina
@@ -40,4 +42,5 @@
 	=>
 	(assert (exec (step ?s) (action solve)))
     (pop-focus)
+	(pop-focus)
 )

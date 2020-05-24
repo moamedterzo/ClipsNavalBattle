@@ -23,6 +23,7 @@
 	(retract ?upd)
 	(printout t "Firing [" ?x ", " ?y "]" crlf)
     (pop-focus)
+	(pop-focus)
 )
 
 ; in alternativa alla regola di sopra, si spara sulla cella che è più probabile abbia qualcosa, senza considerare il contenuto
@@ -38,6 +39,7 @@
 	(retract ?upd)
 	(printout t "Firing [" ?x ", " ?y "]" crlf)
     (pop-focus)
+	(pop-focus)
 )
 
 ; si guessano in ordine le celle con maggiore probabilità
@@ -53,6 +55,7 @@
 	(assert (exec (step ?s) (action guess) (x ?x) (y ?y)))
     (printout t "Guessing [" ?x ", " ?y "]" crlf)
 	(pop-focus)
+	(pop-focus)
 )
 
 ;se non ci sono più celle da considerare che hanno una probabilità superiore alla soglia, allora si termina
@@ -64,4 +67,5 @@
 	=>
 	(assert (exec (step ?s) (action solve)))
     (pop-focus)
+	(pop-focus)
 )

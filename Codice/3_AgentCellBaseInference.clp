@@ -1007,7 +1007,7 @@
 )
 
 ;per le celle che hanno probabilità 1, non serve effettuare il calcolo della probabilità
-(defrule no-update-sure-cell-probability 
+(defrule no-update-sure-cell-probability (declare (salience 50))
 	?gcell <- (g-cell (x ?x) (y ?y) (updated 0) (probability 1))
 =>
 	(modify ?gcell (updated 1))
